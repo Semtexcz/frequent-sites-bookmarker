@@ -2,23 +2,11 @@ const BOOKMARK_FOLDER_NAME = "Frequent Sites";
 const MAX_BOOKMARKS = 10;
 const VISIT_THRESHOLD = 10;
 
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("Frequent Sites Bookmarker installed.");
-});
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  if (request.action === "updateBookmarks") {
-    updateFrequentBookmarks()
-      .then(() => sendResponse({ success: true }))
-      .catch(err => sendResponse({ success: false, error: err }));
-    return true; // keep message channel open for async response
-  }
-});
-
 /**
- * Extracts the domain name from a given URL.
- * @param {string} url - The URL to extract domain from.
- * @returns {string|null} - The hostname without 'www.', or null on error.
+ * Extracts the domain name from a given URL, stripping the 'www.' prefix.
+ *
+ * @param {string} url - The full URL to parse.
+ * @returns {string|null} - The domain name without 'www.', or null if parsing fails.
  */
 function extractDomain(url) {
   try {
@@ -29,9 +17,11 @@ function extractDomain(url) {
 }
 
 /**
- * Retrieves frequently visited sites from browser history.
- * Filters to one URL per domain and limits to MAX_BOOKMARKS entries.
- * @returns {Promise<Array>} - Array of history items.
+ * Retrieves the most frequently visited sites from the browser history.
+ * Filters entries to only include unique domains and returns the top N.
+ *
+ * @returns {Promise<Array>} - A promise that resolves to an array of unique,
+ *                             frequently visited history items (up to MAX_BOOKMARKS).
  */
 async function getTopFrequentSites() {
   const historyItems = await chrome.history.search({ text: "", maxResults: 1000 });
@@ -50,9 +40,10 @@ async function getTopFrequentSites() {
 }
 
 /**
- * Ensures the bookmark folder exists and returns its ID.
- * If it exists, clears its contents.
- * @returns {Promise<string>} - The ID of the folder.
+ * Finds or creates the "Frequent Sites" bookmark folder.
+ * If the folder exists, removes all existing bookmarks inside it.
+ *
+ * @returns {Promise<string>} - A promise that resolves to the ID of the target bookmark folder.
  */
 async function prepareBookmarkFolder() {
   const folders = await chrome.bookmarks.search({ title: BOOKMARK_FOLDER_NAME });
@@ -68,3 +59,47 @@ async function prepareBookmarkFolder() {
     return folderId;
   }
 }
+
+/**
+ * Creates new bookmarks for the given list of history items inside the specified folder.
+ *
+ * @param {string} folderId - The ID of the target bookmark folder.
+ * @param {Array<Object>} items - An array of history items to bookmark.
+ * @returns {Promise<void>}
+ */
+async function createBookmarks(folderId, items) {
+  for (const item of items) {
+    await chrome.bookmarks.create({ parentId: folderId, title: item.title, url: item.url });
+  }
+}
+
+/**
+ * Updates the "Frequent Sites" bookmark folder with the current top visited unique domains.
+ * Combines steps: retrieve history, prepare folder, and create bookmarks.
+ *
+ * @returns {Promise<void>}
+ */
+async function updateFrequentBookmarks() {
+  const topItems = await getTopFrequentSites();
+  const folderId = await prepareBookmarkFolder();
+  await createBookmarks(folderId, topItems);
+  console.log("Frequent sites updated.");
+}
+
+// Expose updateFrequentBookmarks for runtime usage
+self.updateFrequentBookmarks = updateFrequentBookmarks;
+
+// Initialization: log when extension is installed
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("Frequent Sites Bookmarker installed.");
+});
+
+// Listen for runtime messages to trigger bookmark update
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "updateBookmarks") {
+    updateFrequentBookmarks()
+      .then(() => sendResponse({ success: true }))
+      .catch(err => sendResponse({ success: false, error: err.toString() }));
+    return true; // Keep message channel open for async response
+  }
+});
