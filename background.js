@@ -1,6 +1,12 @@
 const BOOKMARK_FOLDER_NAME = "Frequent Sites";
-const MAX_BOOKMARKS = 10;
+let MAX_BOOKMARKS = 10;
 const VISIT_THRESHOLD = 10;
+
+chrome.storage.sync.get(["maxBookmarks"], (result) => {
+  if (result.maxBookmarks) {
+    MAX_BOOKMARKS = result.maxBookmarks;
+  }
+});
 
 /**
  * Extracts the domain name from a given URL, stripping the 'www.' prefix.
@@ -80,6 +86,9 @@ async function createBookmarks(folderId, items) {
  * @returns {Promise<void>}
  */
 async function updateFrequentBookmarks() {
+  const { maxBookmarks } = await chrome.storage.sync.get(["maxBookmarks"]);
+  if (maxBookmarks) MAX_BOOKMARKS = maxBookmarks;
+
   const topItems = await getTopFrequentSites();
   const folderId = await prepareBookmarkFolder();
   await createBookmarks(folderId, topItems);
@@ -114,6 +123,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     updateFrequentBookmarks()
       .then(() => sendResponse({ success: true }))
       .catch(err => sendResponse({ success: false, error: err.toString() }));
-    return true; // Keep message channel open for async response
+    return true;
+  }
+  if (request.action === "setMaxBookmarks") {
+    chrome.storage.sync.set({ maxBookmarks: request.value }, () => {
+      sendResponse({ success: true });
+    });
+    return true;
   }
 });
