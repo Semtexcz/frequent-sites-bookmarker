@@ -3,11 +3,15 @@
 <head>
   <meta charset="utf-8">
   <title>Frequent Sites</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="popup.css" rel="stylesheet">
   <script src="popup.js" defer></script>
 </head>
-<body>
-  <h1>Frequent Sites Bookmarker</h1>
-  <button id="update">Update Bookmarks Now</button>
-  <p id="status"></p>
+<body class="bg-white text-gray-800 font-sans p-4 w-64">
+  <h1 class="text-xl font-semibold mb-4">Frequent Sites Bookmarker</h1>
+  <button id="update" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full mb-3">
+    Update Bookmarks Now
+  </button>
+  <p id="status" class="text-sm text-center text-gray-600"></p>
 </body>
 </html>
