@@ -92,6 +92,20 @@ self.updateFrequentBookmarks = updateFrequentBookmarks;
 // Initialization: log when extension is installed
 chrome.runtime.onInstalled.addListener(() => {
   console.log("Frequent Sites Bookmarker installed.");
+  updateFrequentBookmarks();
+  chrome.alarms.create("autoUpdate", { periodInMinutes: 60 });
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  console.log("Frequent Sites Bookmarker started with browser.");
+  updateFrequentBookmarks();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === "autoUpdate") {
+    console.log("Auto update triggered.");
+    updateFrequentBookmarks();
+  }
 });
 
 // Listen for runtime messages to trigger bookmark update
